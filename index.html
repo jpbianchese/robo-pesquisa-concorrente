@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Robô Farmácia Pro</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="card">
+        <h2>Automação de pesquisa Araujo</h2>
+        <p>Robô de pesquisa <b>automatizada</b></p>
+        
+        <div class="opcoes">
+            <label><input type="checkbox" id="checkRaia" checked> Raia</label>
+            <label><input type="checkbox" id="checkPacheco" checked> Pacheco</label>
+        </div>
+
+        <input type="file" id="fileInput">
+        <button class="btn" id="btnIniciar" onclick="upload()">🚀 PROCESSAR PLANILHA</button>
+        
+        <div id="status">⏳ O robô está trabalhando... Não feche esta janela.</div>
+        
+        <a id="btnDownload" class="btn" href="http://127.0.0.1:5000/download">📥 BAIXAR RESULTADO FINAL</a>
+    </div>
+
+    <script>
+        async function upload() {
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput.files.length === 0) return alert("Selecione um arquivo!");
+
+            const btn = document.getElementById('btnIniciar');
+            const status = document.getElementById('status');
+            const btnDownload = document.getElementById('btnDownload');
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('raia', document.getElementById('checkRaia').checked);
+            formData.append('pacheco', document.getElementById('checkPacheco').checked);
+
+            btn.disabled = true;
+            status.innerHTML = "⏳ O robô está trabalhando... Não feche esta janela.";
+            status.style.color = "#18457a";
+            status.style.display = "block";
+            btnDownload.style.display = "none";
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/processar-excel', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    status.innerHTML = "✅ Processamento Concluído!";
+                    status.style.color = "#4caf50";
+                    btnDownload.style.display = "block"; 
+                } else { 
+                    alert("Erro no processamento. Verifique o terminal do Python."); 
+                }
+            } catch (e) { 
+                alert("Erro de conexão. O Python está rodando?"); 
+            } finally { 
+                btn.disabled = false; 
+            }
+        }
+    </script>
+</body>
+</html>
