@@ -33,6 +33,10 @@ def iniciar_driver():
     service = Service(ChromeDriverManager().install())
     return webdriver.Chrome(service=service, options=chrome_options)
 
+
+# ==========================================
+# INTEGRAÇÃO: DROGA RAIA
+# ==========================================
 def fechar_cookies_raia():
     seletores = ["onetrust-accept-btn-handler", "//button[contains(text(), 'Aceitar')]"]
     for s in seletores:
@@ -96,6 +100,10 @@ def consultar_droga_raia(ean):
     except Exception:
         return None, None
 
+
+# ==========================================
+# INTEGRAÇÃO: DROGARIAS PACHECO
+# ==========================================
 def exterminar_modais_pacheco():
     js_ninja = """
     var btnCookie = document.querySelector('div.dp-bar-dismiss');
@@ -150,7 +158,6 @@ def consultar_pacheco(ean):
         link_produto = driver.execute_script(js_pegar_link)
 
         if link_produto:
-            print(f"🔗 Link Pacheco: {link_produto}")
             driver.get(link_produto) 
             time.sleep(random.uniform(5, 7)) 
             exterminar_modais_pacheco()
@@ -222,12 +229,138 @@ def consultar_pacheco(ean):
     except Exception:
         return None, None
 
+
+# ==========================================
+# INTEGRAÇÃO: SUPER NOSSO
+# ==========================================
+def tratar_valor_super_nosso(texto):
+    try:
+        if not texto: return None
+        # Limpeza extrema: tira R$, espaços, quebras de linha e caracteres invisíveis
+        limpo = texto.lower().replace('r$', '').replace('\n', '').replace(' ', '').replace('\xa0', '').strip()
+        # Se vier algo como 1.027,99, tiramos o ponto do milhar
+        limpo = limpo.replace('.', '')
+        # Troca a vírgula dos centavos por ponto para o Python entender como decimal
+        return float(limpo.replace(',', '.'))
+    except Exception:
+        return None
+
+def consultar_super_nosso(ean):
+    try:
+        # Passo 1: Busca o produto
+        driver.get(f"https://www.supernosso.com/{ean}")
+        time.sleep(random.uniform(6, 8))
+
+        texto_pesquisa = driver.find_element(By.TAG_NAME, 'body').text.lower()
+        if "não encontramos" in texto_pesquisa or "nenhum resultado" in texto_pesquisa:
+            return None, None
+
+        # Passo 2: Entra na página do produto
+        js_pegar_link_sn = """
+        var links = document.querySelectorAll('a[href$="/p"]');
+        for(var i=0; i < links.length; i++) {
+            if(links[i].href && links[i].href.includes('supernosso.com')) {
+                return links[i].href;
+            }
+        }
+        var article = document.querySelector('article.vtex-product-summary-2-x-element');
+        if(article) {
+            var link = article.querySelector('a');
+            if(link && link.href) return link.href;
+        }
+        return null;
+        """
+        link_produto = driver.execute_script(js_pegar_link_sn)
+
+        if link_produto:
+            print(f"🔗 [Super Nosso] Entrando no produto: {link_produto}")
+            driver.get(link_produto)
+            time.sleep(random.uniform(5, 7))
+        else:
+            print("❌ [Super Nosso] Produto não encontrado na busca.")
+            return None, None
+
+        # Passo 3: Captura o preço juntando os spans separados (Integer + Fraction)
+        js_pegar_preco = """
+        // Procura a caixa principal do preço de venda
+        var caixaPreco = document.querySelector('[class*="sellingPrice"]');
+        if(caixaPreco) {
+            // Pega o número inteiro (ex: 27) e os centavos (ex: 99)
+            var intElem = caixaPreco.querySelector('[class*="currencyInteger"]');
+            var fracElem = caixaPreco.querySelector('[class*="currencyFraction"]');
+            
+            if(intElem && fracElem) {
+                // Junta os dois com uma vírgula
+                return intElem.innerText.trim() + ',' + fracElem.innerText.trim();
+            }
+            // Se não achar os pedaços separados, devolve o texto inteiro da caixa
+            return caixaPreco.innerText;
+        }
+        return null;
+        """
+        texto_preco = driver.execute_script(js_pegar_preco)
+        
+        # Fallback (Plano B) caso o JavaScript falhe
+        if not texto_preco:
+            try:
+                elem = driver.find_element(By.CSS_SELECTOR, '[class*="sellingPriceValue"]')
+                texto_preco = elem.text
+            except:
+                pass
+
+        # Converte para número usando a nossa função blindada
+        if texto_preco:
+            preco_final = tratar_valor_super_nosso(texto_preco)
+            if preco_final:
+                print(f"💰 [Super Nosso] Preço capturado: R$ {preco_final}")
+                return preco_final, "PROPRIO"
+                
+        return None, None
+
+    except Exception as e:
+        return None, None
+
+
+# ==========================================
+# ROTAS DO SERVIDOR
+# ==========================================
+@app.route('/pesquisar', methods=['POST'])
+def pesquisar():
+    global driver
+    dados = request.json
+    ean = dados.get('ean')
+    lojas = dados.get('lojas', [])
+    
+    if not driver: 
+        driver = iniciar_driver()
+        
+    resultados = {'raia': '-', 'pacheco': '-', 'supernosso': '-'}
+    
+    if 'raia' in lojas:
+        valor, vend = consultar_droga_raia(ean)
+        resultados['raia'] = f"R$ {valor:.2f}" if valor else "Não enc."
+        
+    if 'pacheco' in lojas:
+        valor, vend = consultar_pacheco(ean)
+        resultados['pacheco'] = f"R$ {valor:.2f}" if valor else "Não enc."
+        
+    if 'supernosso' in lojas:
+        valor, vend = consultar_super_nosso(ean)
+        resultados['supernosso'] = f"R$ {valor:.2f}" if valor else "Não enc."
+        
+    return jsonify(resultados)
+
+
 @app.route('/processar-excel', methods=['POST'])
 def processar_excel():
     global driver
     file = request.files['file']
-    fleg_raia = request.form.get('raia') == 'true'
-    fleg_pacheco = request.form.get('pacheco') == 'true'
+    
+    fleg_raia = str(request.form.get('raia')).lower() in ['true', 'on', '1', 'yes']
+    fleg_pacheco = str(request.form.get('pacheco')).lower() in ['true', 'on', '1', 'yes']
+    fleg_supernosso = str(request.form.get('supernosso', request.form.get('checkSuperNosso'))).lower() in ['true', 'on', '1', 'yes']
+    
+    print(f"\n🚀 Flags de Ativação -> Raia: {fleg_raia} | Pacheco: {fleg_pacheco} | Super Nosso: {fleg_supernosso}")
     
     caminho_entrada = os.path.join(UPLOAD_FOLDER, "entrada.xlsm")
     caminho_saida = os.path.join(UPLOAD_FOLDER, "RESULTADO_FINAL.xlsm")
@@ -244,7 +377,7 @@ def processar_excel():
         if not ean_val: continue
         
         ean = str(ean_val).split('.')[0].strip()
-        print(f"Buscando EAN: {ean} na linha {row}")
+        print(f"🔎 Buscando EAN: {ean} na linha {row}")
 
         if fleg_raia:
             valor, vendedor = consultar_droga_raia(ean)
@@ -258,20 +391,27 @@ def processar_excel():
                     ws[f'S{row}'] = vendedor
 
         if fleg_pacheco:
-            valor, vendedor = consultar_pacheco(ean)
+            valor, seller = consultar_pacheco(ean)
             if valor:
-                if vendedor == "PROPRIO":
+                if seller == "PROPRIO":
                     ws[f'E{row}'] = valor
                     ws[f'E{row}'].number_format = '#,##0.00'
                 else:
                     if not ws[f'R{row}'].value:
                         ws[f'R{row}'] = valor
                         ws[f'R{row}'].number_format = '#,##0.00'
-                        ws[f'S{row}'] = f"{vendedor} (Pacheco)"
+                        ws[f'S{row}'] = f"{seller} (Pacheco)"
+
+        if fleg_supernosso:
+            valor, seller = consultar_super_nosso(ean)
+            if valor:
+                ws[f'F{row}'] = valor
+                ws[f'F{row}'].number_format = '#,##0.00'
 
         wb.save(caminho_saida)
 
     return jsonify({"status": "concluido"})
+
 
 @app.route('/download')
 def download():

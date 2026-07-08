@@ -13,14 +13,15 @@
         <div class="opcoes">
             <label><input type="checkbox" id="checkRaia" checked> Raia</label>
             <label><input type="checkbox" id="checkPacheco" checked> Pacheco</label>
+            <label><input type="checkbox" id="checkSuperNosso" checked> Super Nosso</label>
         </div>
 
         <input type="file" id="fileInput">
         <button class="btn" id="btnIniciar" onclick="upload()">🚀 PROCESSAR PLANILHA</button>
         
-        <div id="status">⏳ O robô está trabalhando... Não feche esta janela.</div>
+        <div id="status" style="display:none;">⏳ O robô está trabalhando... Não feche esta janela.</div>
         
-        <a id="btnDownload" class="btn" href="http://127.0.0.1:5000/download">📥 BAIXAR RESULTADO FINAL</a>
+        <a id="btnDownload" class="btn" href="http://127.0.0.1:5000/download" style="display:none;">📥 BAIXAR RESULTADO FINAL</a>
     </div>
 
     <script>
@@ -36,6 +37,7 @@
             formData.append('file', fileInput.files[0]);
             formData.append('raia', document.getElementById('checkRaia').checked);
             formData.append('pacheco', document.getElementById('checkPacheco').checked);
+            formData.append('supernosso', document.getElementById('checkSuperNosso').checked); // ✨ Linha adicionada!
 
             btn.disabled = true;
             status.innerHTML = "⏳ O robô está trabalhando... Não feche esta janela.";
