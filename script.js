@@ -1,6 +1,3 @@
-// ==========================================
-// FUNÇÃO 1: PESQUISA DIRETO NA TELA (TABELA)
-// ==========================================
 async function iniciar() {
     const campoEan = document.getElementById('listaEan');
     const eans = campoEan.value.split('\n').map(x => x.trim()).filter(x => x);
@@ -51,18 +48,12 @@ async function iniciar() {
 }
 
 
-// ==========================================
-// FUNÇÃO 2: PROCESSAMENTO VIA PLANILHA EXCEL
-// ==========================================
-// NOTA: Certifique-se de que no seu HTML o botão de processar o Excel chame essa função 
-// ou adapte o ID do botão ('btnProcessarExcel' é um exemplo)
 document.addEventListener("DOMContentLoaded", function() {
-    const btnExcel = document.getElementById('btnProcessar'); // Troque pelo ID do seu botão de subir arquivo, se for diferente
+    const btnExcel = document.getElementById('btnProcessar');
     
     if(btnExcel) {
         btnExcel.addEventListener('click', async function() {
-            // Se o seu input file tiver outro ID, mude aqui:
-            const inputFile = document.getElementById('arquivoExcel'); 
+            const inputFile = document.getElementById('arquivoExcel');
             
             if (!inputFile || inputFile.files.length === 0) {
                 alert('Por favor, selecione um arquivo Excel primeiro!');
@@ -80,14 +71,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
             const formData = new FormData();
             formData.append('file', inputFile.files[0]);
-            
-            // É aqui que garantimos que o Excel saiba que o Super Nosso foi marcado!
             formData.append('raia', chkRaia);
             formData.append('pacheco', chkPacheco);
-            formData.append('supernosso', chkSuperNosso); 
+            formData.append('supernosso', chkSuperNosso);
 
             try {
-                // Altera botão visualmente se houver id status
                 const divStatus = document.getElementById('status');
                 if(divStatus) {
                     divStatus.innerText = "⏳ O robô está processando. Por favor, aguarde...";

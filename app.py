@@ -34,9 +34,6 @@ def iniciar_driver():
     return webdriver.Chrome(service=service, options=chrome_options)
 
 
-# ==========================================
-# INTEGRAÇÃO: DROGA RAIA
-# ==========================================
 def fechar_cookies_raia():
     seletores = ["onetrust-accept-btn-handler", "//button[contains(text(), 'Aceitar')]"]
     for s in seletores:
@@ -101,9 +98,6 @@ def consultar_droga_raia(ean):
         return None, None
 
 
-# ==========================================
-# INTEGRAÇÃO: DROGARIAS PACHECO
-# ==========================================
 def exterminar_modais_pacheco():
     js_ninja = """
     var btnCookie = document.querySelector('div.dp-bar-dismiss');
@@ -230,24 +224,17 @@ def consultar_pacheco(ean):
         return None, None
 
 
-# ==========================================
-# INTEGRAÇÃO: SUPER NOSSO
-# ==========================================
 def tratar_valor_super_nosso(texto):
     try:
         if not texto: return None
-        # Limpeza extrema: tira R$, espaços, quebras de linha e caracteres invisíveis
         limpo = texto.lower().replace('r$', '').replace('\n', '').replace(' ', '').replace('\xa0', '').strip()
-        # Se vier algo como 1.027,99, tiramos o ponto do milhar
         limpo = limpo.replace('.', '')
-        # Troca a vírgula dos centavos por ponto para o Python entender como decimal
         return float(limpo.replace(',', '.'))
     except Exception:
         return None
 
 def consultar_super_nosso(ean):
     try:
-        # Passo 1: Busca o produto
         driver.get(f"https://www.supernosso.com/{ean}")
         time.sleep(random.uniform(6, 8))
 
@@ -255,7 +242,6 @@ def consultar_super_nosso(ean):
         if "não encontramos" in texto_pesquisa or "nenhum resultado" in texto_pesquisa:
             return None, None
 
-        # Passo 2: Entra na página do produto
         js_pegar_link_sn = """
         var links = document.querySelectorAll('a[href$="/p"]');
         for(var i=0; i < links.length; i++) {
@@ -280,7 +266,6 @@ def consultar_super_nosso(ean):
             print("❌ [Super Nosso] Produto não encontrado na busca.")
             return None, None
 
-        # Passo 3: Captura o preço juntando os spans separados (Integer + Fraction)
         js_pegar_preco = """
         // Procura a caixa principal do preço de venda
         var caixaPreco = document.querySelector('[class*="sellingPrice"]');
@@ -300,7 +285,6 @@ def consultar_super_nosso(ean):
         """
         texto_preco = driver.execute_script(js_pegar_preco)
         
-        # Fallback (Plano B) caso o JavaScript falhe
         if not texto_preco:
             try:
                 elem = driver.find_element(By.CSS_SELECTOR, '[class*="sellingPriceValue"]')
@@ -308,7 +292,6 @@ def consultar_super_nosso(ean):
             except:
                 pass
 
-        # Converte para número usando a nossa função blindada
         if texto_preco:
             preco_final = tratar_valor_super_nosso(texto_preco)
             if preco_final:
@@ -321,9 +304,6 @@ def consultar_super_nosso(ean):
         return None, None
 
 
-# ==========================================
-# ROTAS DO SERVIDOR
-# ==========================================
 @app.route('/pesquisar', methods=['POST'])
 def pesquisar():
     global driver
