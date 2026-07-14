@@ -1,0 +1,5 @@
+processamento/
+__pycache__/
+
+#1° quando rodava o robô ele atualizava as pastas entradas e final, ai mexia e n queria, dei ignore, nao mexer.
+#2° ignorando a pasta de processamento
