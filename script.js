@@ -1,108 +1,163 @@
-async function iniciar() {
-    const campoEan = document.getElementById('listaEan');
-    const eans = campoEan.value.split('\n').map(x => x.trim()).filter(x => x);
-    const lojas = [];
-    
-    // Lendo os checkboxes com os IDs corretos
-    if(document.getElementById('checkRaia') && document.getElementById('checkRaia').checked) lojas.push('raia');
-    if(document.getElementById('checkPacheco') && document.getElementById('checkPacheco').checked) lojas.push('pacheco');
-    if(document.getElementById('checkSuperNosso') && document.getElementById('checkSuperNosso').checked) lojas.push('supernosso');
-    
-    const corpo = document.getElementById('corpo');
-    corpo.innerHTML = "";
+const baseUrl = 'http://127.0.0.1:5000';
 
-    if (eans.length === 0) {
-        alert("Cole os EANs primeiro!");
+const fileInput = document.getElementById('fileInput');
+const status = document.getElementById('status');
+const btnIniciar = document.getElementById('btnIniciar');
+const btnDownload = document.getElementById('btnDownload');
+const fileNameLabel = document.getElementById('fileName');
+const dropArea = document.querySelector('.file-drop');
+
+let hideTimeout;
+
+function showStatus(message, color) {
+    if (!status) return;
+    status.innerText = message;
+    status.style.color = color;
+    status.classList.add('running');
+    status.classList.remove('hidden');
+    clearTimeout(hideTimeout);
+}
+
+function hideStatus(delay = 3000) {
+    if (!status) return;
+    clearTimeout(hideTimeout);
+    hideTimeout = setTimeout(() => {
+        status.classList.add('hidden');
+        status.classList.remove('running');
+    }, delay);
+}
+
+function updateFileDisplay() {
+    if (!fileInput || !fileNameLabel || !dropArea) return;
+    if (!fileInput.files.length) {
+        fileNameLabel.textContent = 'Nenhum arquivo selecionado';
+        dropArea.classList.remove('has-file', 'attached');
         return;
     }
 
-    for(let ean of eans) {
-        const novaLinha = document.createElement('tr');
-        novaLinha.innerHTML = `
-            <td>${ean}</td>
-            <td id="raia-${ean}">...</td>
-            <td id="pacheco-${ean}">...</td>
-            <td id="supernosso-${ean}">...</td>
-        `;
-        corpo.appendChild(novaLinha);
+    fileNameLabel.textContent = fileInput.files[0].name;
+    dropArea.classList.add('has-file', 'attached');
+    setTimeout(() => dropArea.classList.remove('attached'), 1200);
+}
 
-        try {
-            const response = await fetch('http://127.0.0.1:5000/pesquisar', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ ean, lojas })
-            });
-            
-            const res = await response.json();
-            
-            document.getElementById(`raia-${ean}`).innerText = res.raia || '-';
-            document.getElementById(`pacheco-${ean}`).innerText = res.pacheco || '-';
-            document.getElementById(`supernosso-${ean}`).innerText = res.supernosso || '-';
-        } catch (err) {
-            document.getElementById(`raia-${ean}`).innerText = "Erro Conexão";
-            document.getElementById(`pacheco-${ean}`).innerText = "Erro Conexão";
-            document.getElementById(`supernosso-${ean}`).innerText = "Erro Conexão";
-            console.error("Erro ao falar com o Python:", err);
+function sanitizeDownloadName(value) {
+    let desiredName = value && value.trim() ? value.trim() : 'pesquisa robo';
+    desiredName = desiredName.replace(/[\\/:*?"<>|]+/g, '').trim();
+    if (!desiredName.toLowerCase().endsWith('.xlsm')) {
+        desiredName += '.xlsm';
+    }
+    return desiredName;
+}
+
+async function upload() {
+    if (!fileInput || !btnIniciar || !btnDownload) return;
+    if (fileInput.files.length === 0) {
+        alert('Selecione um arquivo!');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('raia', document.getElementById('checkRaia').checked);
+    formData.append('pacheco', document.getElementById('checkPacheco').checked);
+    formData.append('supernosso', document.getElementById('checkSuperNosso').checked);
+
+    const downloadName = sanitizeDownloadName(document.getElementById('finalName').value || 'pesquisa robo');
+    formData.append('download_name', downloadName);
+
+    btnIniciar.disabled = true;
+    btnDownload.classList.add('hidden');
+    showStatus('O robô está trabalhando... Não feche esta janela.', '#FFFFFF');
+
+    try {
+        const response = await fetch(`${baseUrl}/processar-excel`, {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+
+        if (!response.ok) {
+            showStatus('Erro ao iniciar processamento. Verifique o terminal do Python.', '#ff6b6b');
+            hideStatus(5000);
+            btnIniciar.disabled = false;
+            return;
         }
+
+        if (result.status === 'started') {
+            let polls = 0;
+            const pollInterval = 1200;
+            const maxPolls = 3600;
+            const poll = setInterval(async () => {
+                try {
+                    const sres = await fetch(`${baseUrl}/status`);
+                    if (!sres.ok) return;
+                    const st = await sres.json();
+
+                    if (st.status === 'done') {
+                        clearInterval(poll);
+                        finishSuccess(st.download_name || downloadName);
+                    } else if (st.status === 'error') {
+                        clearInterval(poll);
+                        showStatus('Erro no processamento: ' + (st.error || ''), '#ff6b6b');
+                        hideStatus(7000);
+                        btnIniciar.disabled = false;
+                    }
+
+                    polls += 1;
+                    if (polls > maxPolls) {
+                        clearInterval(poll);
+                        showStatus('Tempo de espera excedido. Verifique o servidor.', '#ff6b6b');
+                        hideStatus(7000);
+                        btnIniciar.disabled = false;
+                    }
+                } catch (err) {
+                    console.error('Polling error', err);
+                }
+            }, pollInterval);
+        } else if (result.status === 'concluido') {
+            finishSuccess(result.download_name || downloadName);
+        } else {
+            showStatus('Resposta inesperada do servidor.', '#ff6b6b');
+            hideStatus(5000);
+            btnIniciar.disabled = false;
+        }
+    } catch (e) {
+        console.error(e);
+        showStatus('Erro de conexão. O Python está rodando?', '#ff6b6b');
+        hideStatus(5000);
+        btnIniciar.disabled = false;
     }
 }
 
+function finishSuccess(finalName) {
+    if (!btnDownload || !btnIniciar) return;
+    showStatus('Processamento concluído.', '#4caf50');
+    btnDownload.href = `${baseUrl}/download?filename=${encodeURIComponent(finalName)}`;
+    btnDownload.download = finalName;
+    btnDownload.classList.remove('hidden');
 
-document.addEventListener("DOMContentLoaded", function() {
-    const btnExcel = document.getElementById('btnProcessar');
-    
-    if(btnExcel) {
-        btnExcel.addEventListener('click', async function() {
-            const inputFile = document.getElementById('arquivoExcel');
-            
-            if (!inputFile || inputFile.files.length === 0) {
-                alert('Por favor, selecione um arquivo Excel primeiro!');
-                return;
-            }
+    const tempLink = document.createElement('a');
+    tempLink.href = btnDownload.href;
+    tempLink.download = finalName;
+    tempLink.style.display = 'none';
+    document.body.appendChild(tempLink);
+    tempLink.click();
+    document.body.removeChild(tempLink);
 
-            const chkRaia = document.getElementById('checkRaia') ? document.getElementById('checkRaia').checked : false;
-            const chkPacheco = document.getElementById('checkPacheco') ? document.getElementById('checkPacheco').checked : false;
-            const chkSuperNosso = document.getElementById('checkSuperNosso') ? document.getElementById('checkSuperNosso').checked : false;
+    hideStatus(3800);
+    btnIniciar.disabled = false;
+}
 
-            if (!chkRaia && !chkPacheco && !chkSuperNosso) {
-                alert('Selecione pelo menos um concorrente para pesquisar!');
-                return;
-            }
+function handleFileChange() {
+    updateFileDisplay();
+}
 
-            const formData = new FormData();
-            formData.append('file', inputFile.files[0]);
-            formData.append('raia', chkRaia);
-            formData.append('pacheco', chkPacheco);
-            formData.append('supernosso', chkSuperNosso);
-
-            try {
-                const divStatus = document.getElementById('status');
-                if(divStatus) {
-                    divStatus.innerText = "⏳ O robô está processando. Por favor, aguarde...";
-                    divStatus.style.color = "#d39e00";
-                }
-                btnExcel.disabled = true;
-
-                const resposta = await fetch('http://127.0.0.1:5000/processar-excel', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const resultado = await resposta.json();
-
-                if (resultado.status === 'concluido') {
-                    if(divStatus) {
-                        divStatus.innerText = "✅ Finalizado! Baixando o arquivo...";
-                        divStatus.style.color = "#28a745";
-                    }
-                    window.location.href = 'http://127.0.0.1:5000/download';
-                }
-            } catch (erro) {
-                console.error(erro);
-                alert("Erro ao processar o arquivo. Verifique o terminal.");
-            } finally {
-                btnExcel.disabled = false;
-            }
-        });
+window.addEventListener('DOMContentLoaded', () => {
+    if (fileInput) {
+        fileInput.addEventListener('change', handleFileChange);
     }
+    if (btnIniciar) {
+        btnIniciar.addEventListener('click', upload);
+    }
+    updateFileDisplay();
 });

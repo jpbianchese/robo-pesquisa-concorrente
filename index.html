@@ -1,69 +1,59 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Robô Farmácia Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pesquisa de concorrente</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="card">
-        <h2>Automação de pesquisa Araujo</h2>
-        <p>Robô de pesquisa <b>automatizada</b></p>
-        
-        <div class="opcoes">
-            <label><input type="checkbox" id="checkRaia" checked> Raia</label>
-            <label><input type="checkbox" id="checkPacheco" checked> Pacheco</label>
-            <label><input type="checkbox" id="checkSuperNosso" checked> Super Nosso</label>
+    <div class="main-card">
+        <div class="card-header">
+            <div>
+                <h1>Pesquisa de concorrente</h1>
+                <p></p>
+               <p class="card-intro">Executa a pesquisa de preços concorrentes para nos ajudar com o alinhamento de mercado</p>
+            </div>
         </div>
 
-        <input type="file" id="fileInput">
-        <button class="btn" id="btnIniciar" onclick="upload()">🚀 PROCESSAR PLANILHA</button>
-        
-        <div id="status" style="display:none;">⏳ O robô está trabalhando... Não feche esta janela.</div>
-        
-        <a id="btnDownload" class="btn" href="http://127.0.0.1:5000/download" style="display:none;">📥 BAIXAR RESULTADO FINAL</a>
+        <div class="control-card">
+            <section class="section-panel">
+                <h2>Selecionar concorrentes</h2>
+                <div class="toggle-grid">
+                    <label class="toggle-card">
+                        <input type="checkbox" id="checkRaia" checked>
+                        <span class="toggle-switch"></span>
+                        <span class="toggle-label">Raia</span>
+                    </label>
+                    <label class="toggle-card">
+                        <input type="checkbox" id="checkPacheco" checked>
+                        <span class="toggle-switch"></span>
+                        <span class="toggle-label">Pacheco</span>
+                    </label>
+                    <label class="toggle-card">
+                        <input type="checkbox" id="checkSuperNosso" checked>
+                        <span class="toggle-switch"></span>
+                        <span class="toggle-label">Super Nosso</span>
+                    </label>
+                </div>
+            </section>
+
+            <section class="section-panel">
+                <h2>Arquivo para processar</h2>
+                <input type="text" id="finalName" class="final-name-input" placeholder="Nome do arquivo final (opcional)">
+                <label class="file-drop" for="fileInput">
+                    <span class="file-drop-text">Clique ou arraste o arquivo aqui</span>
+                    <span id="fileName" class="file-name">Nenhum arquivo selecionado</span>
+                </label>
+                <input type="file" id="fileInput">
+            </section>
+
+            <button class="btn action-btn" id="btnIniciar">PROCESSAR PLANILHA</button>
+            <div id="status" class="status-bar hidden">O robô está trabalhando... Não feche esta janela.</div>
+            <a id="btnDownload" class="btn download-btn hidden" href="http://127.0.0.1:5000/download">BAIXAR RESULTADO FINAL</a>
+        </div>
     </div>
 
-    <script>
-        async function upload() {
-            const fileInput = document.getElementById('fileInput');
-            if (fileInput.files.length === 0) return alert("Selecione um arquivo!");
-
-            const btn = document.getElementById('btnIniciar');
-            const status = document.getElementById('status');
-            const btnDownload = document.getElementById('btnDownload');
-
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-            formData.append('raia', document.getElementById('checkRaia').checked);
-            formData.append('pacheco', document.getElementById('checkPacheco').checked);
-            formData.append('supernosso', document.getElementById('checkSuperNosso').checked);
-
-            btn.disabled = true;
-            status.innerHTML = "⏳ O robô está trabalhando... Não feche esta janela.";
-            status.style.color = "#18457a";
-            status.style.display = "block";
-            btnDownload.style.display = "none";
-
-            try {
-                const response = await fetch('http://127.0.0.1:5000/processar-excel', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (response.ok) {
-                    status.innerHTML = "✅ Processamento Concluído!";
-                    status.style.color = "#4caf50";
-                    btnDownload.style.display = "block"; 
-                } else { 
-                    alert("Erro no processamento. Verifique o terminal do Python."); 
-                }
-            } catch (e) { 
-                alert("Erro de conexão. O Python está rodando?"); 
-            } finally { 
-                btn.disabled = false; 
-            }
-        }
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
