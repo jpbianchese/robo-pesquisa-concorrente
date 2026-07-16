@@ -2,6 +2,7 @@ from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
 import os
 import threading
+import logging
 from scrapers import (
     iniciar_driver,
     consultar_droga_raia,
@@ -12,6 +13,9 @@ from scrapers import (
 
 app = Flask(__name__)
 CORS(app)
+
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 
 UPLOAD_FOLDER = 'processamento'
 if not os.path.exists(UPLOAD_FOLDER):
@@ -26,7 +30,6 @@ process_state = {
 
 
 def sanitize_download_name(value):
-    """Sanitiza o nome do arquivo de download."""
     if not value:
         return 'pesquisa robo.xlsm'
     name = os.path.basename(value).strip()
@@ -39,11 +42,8 @@ def sanitize_download_name(value):
     return name
 
 
-
-
 @app.route('/pesquisar', methods=['POST'])
 def pesquisar():
-    """Consulta preço em uma ou mais lojas para um EAN específico."""
     global driver
     dados = request.json
     ean = dados.get('ean')
@@ -71,7 +71,6 @@ def pesquisar():
 
 @app.route('/processar-excel', methods=['POST'])
 def processar_excel():
-    """Processa arquivo Excel e realiza scraping de preços em thread separada."""
     global driver
     file = request.files['file']
 
@@ -121,13 +120,11 @@ def processar_excel():
 
 @app.route('/status')
 def status():
-    """Retorna o status atual do processamento."""
     return jsonify(process_state)
 
 
 @app.route('/download')
 def download():
-    """Faz download do arquivo Excel processado."""
     download_name = request.args.get('filename', process_state.get('download_name', 'RESULTADO_FINAL.xlsm'))
     download_name = os.path.basename(download_name)
     if not download_name.lower().endswith('.xlsm'):
@@ -136,6 +133,7 @@ def download():
         return send_file(os.path.join(UPLOAD_FOLDER, "RESULTADO_FINAL.xlsm"), as_attachment=True, download_name=download_name)
     except TypeError:
         return send_file(os.path.join(UPLOAD_FOLDER, "RESULTADO_FINAL.xlsm"), as_attachment=True, attachment_filename=download_name)
+
 
 if __name__ == '__main__':
     app.run(port=5000)
