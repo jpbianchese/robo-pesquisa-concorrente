@@ -1,31 +1,15 @@
 const baseUrl = 'http://127.0.0.1:5000';
 
 const fileInput = document.getElementById('fileInput');
-const status = document.getElementById('status');
 const btnIniciar = document.getElementById('btnIniciar');
 const btnDownload = document.getElementById('btnDownload');
 const fileNameLabel = document.getElementById('fileName');
 const dropArea = document.querySelector('.file-drop');
 
-let hideTimeout;
-
-function showStatus(message, color) {
-    if (!status) return;
-    status.innerText = message;
-    status.style.color = color;
-    status.classList.add('running');
-    status.classList.remove('hidden');
-    clearTimeout(hideTimeout);
-}
-
-function hideStatus(delay = 3000) {
-    if (!status) return;
-    clearTimeout(hideTimeout);
-    hideTimeout = setTimeout(() => {
-        status.classList.add('hidden');
-        status.classList.remove('running');
-    }, delay);
-}
+const progressContainer = document.getElementById('progressContainer');
+const statusText = document.getElementById('statusText');
+const progressPercent = document.getElementById('progressPercent');
+const progressBar = document.getElementById('progressBar');
 
 function updateFileDisplay() {
     if (!fileInput || !fileNameLabel || !dropArea) return;
@@ -49,6 +33,15 @@ function sanitizeDownloadName(value) {
     return desiredName;
 }
 
+function resetProgressUI() {
+    progressContainer.classList.remove('hidden');
+    btnDownload.classList.add('hidden');
+    statusText.innerText = 'Iniciando o robô... Não feche a janela.';
+    statusText.style.color = 'var(--accent)';
+    progressPercent.innerText = '0%';
+    progressBar.style.width = '0%';
+}
+
 async function upload() {
     if (!fileInput || !btnIniciar || !btnDownload) return;
     if (fileInput.files.length === 0) {
@@ -61,13 +54,16 @@ async function upload() {
     formData.append('raia', document.getElementById('checkRaia').checked);
     formData.append('pacheco', document.getElementById('checkPacheco').checked);
     formData.append('supernosso', document.getElementById('checkSuperNosso').checked);
+    
+    const checkLojasRede = document.getElementById('checkLojasRede');
+    formData.append('lojasrede', checkLojasRede ? checkLojasRede.checked : false);
 
     const downloadName = sanitizeDownloadName(document.getElementById('finalName').value || 'pesquisa robo');
     formData.append('download_name', downloadName);
 
+    // Desabilita o botão e prepara a UI
     btnIniciar.disabled = true;
-    btnDownload.classList.add('hidden');
-    showStatus('O robô está trabalhando... Não feche esta janela.', '#FFFFFF');
+    resetProgressUI();
 
     try {
         const response = await fetch(`${baseUrl}/processar-excel`, {
@@ -77,8 +73,8 @@ async function upload() {
         const result = await response.json();
 
         if (!response.ok) {
-            showStatus('Erro ao iniciar processamento. Verifique o terminal do Python.', '#ff6b6b');
-            hideStatus(5000);
+            statusText.innerText = 'Erro ao iniciar processamento. Verifique o terminal do Python.';
+            statusText.style.color = 'var(--danger)';
             btnIniciar.disabled = false;
             return;
         }
@@ -87,55 +83,73 @@ async function upload() {
             let polls = 0;
             const pollInterval = 1200;
             const maxPolls = 3600;
+            
             const poll = setInterval(async () => {
                 try {
                     const sres = await fetch(`${baseUrl}/status`);
                     if (!sres.ok) return;
                     const st = await sres.json();
 
-                    if (st.status === 'done') {
+                    // Atualiza a interface com os dados em tempo real
+                    if (st.status === 'processing') {
+                        const percent = st.progresso || 0;
+                        const msg = st.mensagem || 'Processando...';
+                        
+                        progressPercent.innerText = percent + '%';
+                        progressBar.style.width = percent + '%';
+                        statusText.innerText = msg;
+                    } 
+                    else if (st.status === 'done') {
                         clearInterval(poll);
+                        progressPercent.innerText = '100%';
+                        progressBar.style.width = '100%';
+                        statusText.innerText = 'Processamento concluído com sucesso!';
+                        statusText.style.color = 'var(--success)';
                         finishSuccess(st.download_name || downloadName);
-                    } else if (st.status === 'error') {
+                    } 
+                    else if (st.status === 'error') {
                         clearInterval(poll);
-                        showStatus('Erro no processamento: ' + (st.error || ''), '#ff6b6b');
-                        hideStatus(7000);
+                        statusText.innerText = 'Erro no processamento: ' + (st.error || '');
+                        statusText.style.color = 'var(--danger)';
                         btnIniciar.disabled = false;
                     }
 
                     polls += 1;
                     if (polls > maxPolls) {
                         clearInterval(poll);
-                        showStatus('Tempo de espera excedido. Verifique o servidor.', '#ff6b6b');
-                        hideStatus(7000);
+                        statusText.innerText = 'Tempo de espera excedido. Verifique o servidor.';
+                        statusText.style.color = 'var(--danger)';
                         btnIniciar.disabled = false;
                     }
                 } catch (err) {
                     console.error('Polling error', err);
                 }
             }, pollInterval);
+            
         } else if (result.status === 'concluido') {
             finishSuccess(result.download_name || downloadName);
         } else {
-            showStatus('Resposta inesperada do servidor.', '#ff6b6b');
-            hideStatus(5000);
+            statusText.innerText = 'Resposta inesperada do servidor.';
+            statusText.style.color = 'var(--danger)';
             btnIniciar.disabled = false;
         }
     } catch (e) {
         console.error(e);
-        showStatus('Erro de conexão. O Python está rodando?', '#ff6b6b');
-        hideStatus(5000);
+        statusText.innerText = 'Erro de conexão. O Python está rodando?';
+        statusText.style.color = 'var(--danger)';
         btnIniciar.disabled = false;
     }
 }
 
 function finishSuccess(finalName) {
     if (!btnDownload || !btnIniciar) return;
-    showStatus('Processamento concluído.', '#4caf50');
+    
+    // Mostra o botão de download
     btnDownload.href = `${baseUrl}/download?filename=${encodeURIComponent(finalName)}`;
     btnDownload.download = finalName;
     btnDownload.classList.remove('hidden');
 
+    // Força o download automático (mantendo sua lógica original)
     const tempLink = document.createElement('a');
     tempLink.href = btnDownload.href;
     tempLink.download = finalName;
@@ -144,7 +158,6 @@ function finishSuccess(finalName) {
     tempLink.click();
     document.body.removeChild(tempLink);
 
-    hideStatus(3800);
     btnIniciar.disabled = false;
 }
 

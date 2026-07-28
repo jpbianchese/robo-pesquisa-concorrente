@@ -11,8 +11,7 @@
         <div class="card-header">
             <div>
                 <h1>Pesquisa de concorrente</h1>
-                <p></p>
-               <p class="card-intro">Executa a pesquisa de preços concorrentes para nos ajudar com o alinhamento de mercado</p>
+                <p class="card-intro">Executa a pesquisa de preços concorrentes para nos ajudar com o alinhamento de mercado</p>
             </div>
         </div>
 
@@ -35,6 +34,11 @@
                         <span class="toggle-switch"></span>
                         <span class="toggle-label">Super Nosso</span>
                     </label>
+                    <label class="toggle-card">
+                        <input type="checkbox" id="checkLojasRede" checked>
+                        <span class="toggle-switch"></span>
+                        <span class="toggle-label">Lojas Rede</span>
+                    </label>
                 </div>
             </section>
 
@@ -49,7 +53,18 @@
             </section>
 
             <button class="btn action-btn" id="btnIniciar">PROCESSAR PLANILHA</button>
-            <div id="status" class="status-bar hidden">O robô está trabalhando... Não feche esta janela.</div>
+
+            <div id="progressContainer" class="progress-container hidden">
+                <div class="progress-header">
+                    <span id="statusText">Aguardando início...</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                
+                <div class="progress-track">
+                    <div id="progressBar" class="progress-fill"></div>
+                </div>
+            </div>
+
             <a id="btnDownload" class="btn download-btn hidden" href="http://127.0.0.1:5000/download">BAIXAR RESULTADO FINAL</a>
         </div>
     </div>

@@ -4,7 +4,7 @@ Este robô automatiza a pesquisa de preços de produtos nos sites concorrentes e
 
 ---
 
-## 🛠️ Pré-requisitos (O que você precisa instalar)
+##  Pré-requisitos (O que você precisa instalar)
 
 Antes de começar, você precisa ter instalado no seu computador:
 
@@ -17,7 +17,7 @@ Antes de começar, você precisa ter instalado no seu computador:
 
 ---
 
-## ⬇️ Como instalar o projeto (Primeira vez)
+##  Como instalar o projeto (Primeira vez)
 
 Com os dois programas acima instalados, abra o aplicativo do **VS Code** e siga a sequência de passos abaixo:
 
@@ -37,22 +37,8 @@ E use Git pull quando for atualizar qunado necessário.
 ## 📚 Bibliotecas necessárias
 
 
-(Isso aqui serve para criar a página de internet do seu robô)
+(Isso aqui serve para baixar todas bibliotecas de uma vez)
   ```bash
-  pip install flask
+  pip install -r requirements.txt
   ```
 
-(Esse é o cara que vai abrir o Chrome e pesquisar nos sites sozinho)
-  ```bash
-  pip install selenium
-  ```
-
-(Essa biblioteca organiza todos os preços e informações na memória)
-  ```bash
-  pip install pandas
-  ```
-
-  (Esse aqui serve para o robô conseguir mexer e salvar tudo em formato do Excel)
-  ```bash
-  pip install openpyxl
-  ```

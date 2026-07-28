@@ -6,6 +6,7 @@ Estrutura:
 - droga_raia: Scraper para o site Droga Raia
 - drogarias_pacheco: Scraper para o site Drogarias Pacheco
 - super_nosso: Scraper para o site Super Nosso
+- lojas_rede: Scraper para o site Lojas Rede
 - excel_processor: Processamento e automação de planilhas Excel
 """
 
@@ -13,6 +14,7 @@ from .selenium_setup import iniciar_driver
 from .droga_raia import consultar_droga_raia
 from .drogarias_pacheco import consultar_pacheco
 from .super_nosso import consultar_super_nosso
+from .lojas_rede import consultar_lojas_rede
 from .excel_processor import processar_excel_com_scraping
 
 __all__ = [
@@ -20,5 +22,6 @@ __all__ = [
     'consultar_droga_raia',
     'consultar_pacheco',
     'consultar_super_nosso',
+    'consultar_lojas_rede',
     'processar_excel_com_scraping',
 ]
