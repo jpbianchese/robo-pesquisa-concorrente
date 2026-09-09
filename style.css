@@ -295,6 +295,13 @@ input[type="file"] {
     background: rgba(100, 183, 255, 0.22);
 }
 
+.download-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 4px;
+}
+
 
 .progress-container {
     margin-top: 10px;

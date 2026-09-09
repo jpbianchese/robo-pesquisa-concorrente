@@ -27,6 +27,7 @@ driver = None
 process_state = {
     'status': 'idle',
     'download_name': None,
+    'concorrentes_concluidos': [],
     'error': None,
     'progresso': 0,
     'mensagem': 'Aguardando início...'
@@ -47,6 +48,14 @@ def sanitize_download_name(value):
 def atualizar_progresso(porcentagem, mensagem):
     process_state['progresso'] = porcentagem
     process_state['mensagem'] = mensagem
+
+def registrar_concorrente_concluido(chave, nome, caminho):
+    process_state['concorrentes_concluidos'].append({
+        'chave': chave,
+        'nome': nome,
+        'arquivo': os.path.basename(caminho),
+    })
+    process_state['mensagem'] = f'{nome} concluído. Resultado disponível para download.'
 
 @app.route('/pesquisar', methods=['POST'])
 def pesquisar():
@@ -100,6 +109,7 @@ def processar_excel():
     
     process_state['status'] = 'processing'
     process_state['download_name'] = final_name
+    process_state['concorrentes_concluidos'] = []
     process_state['error'] = None
     process_state['progresso'] = 0
     process_state['mensagem'] = 'Iniciando a leitura da planilha...'
@@ -122,7 +132,8 @@ def processar_excel():
                 caminho_entrada, 
                 caminho_saida, 
                 flags, 
-                callback_progresso=atualizar_progresso
+                callback_progresso=atualizar_progresso,
+                callback_concorrente=registrar_concorrente_concluido,
             )
 
             process_state['status'] = 'done'
@@ -155,6 +166,27 @@ def download():
         return send_file(os.path.join(UPLOAD_FOLDER, "RESULTADO_FINAL.xlsm"), as_attachment=True, download_name=download_name)
     except TypeError:
         return send_file(os.path.join(UPLOAD_FOLDER, "RESULTADO_FINAL.xlsm"), as_attachment=True, attachment_filename=download_name)
+
+@app.route('/download/<concorrente>')
+def download_concorrente(concorrente):
+    concorrentes_validos = {'raia', 'pacheco', 'supernosso', 'lojasrede'}
+    if concorrente not in concorrentes_validos:
+        return jsonify({'error': 'Concorrente inválido'}), 404
+
+    caminho = os.path.join(UPLOAD_FOLDER, f'RESULTADO_FINAL_{concorrente}.xlsm')
+    if not os.path.exists(caminho):
+        return jsonify({'error': 'Resultado ainda não disponível'}), 404
+
+    nomes = {
+        'raia': 'resultado_raia.xlsm',
+        'pacheco': 'resultado_pacheco.xlsm',
+        'supernosso': 'resultado_super_nosso.xlsm',
+        'lojasrede': 'resultado_lojas_rede.xlsm',
+    }
+    try:
+        return send_file(caminho, as_attachment=True, download_name=nomes[concorrente])
+    except TypeError:
+        return send_file(caminho, as_attachment=True, attachment_filename=nomes[concorrente])
 
 if __name__ == '__main__':
     app.run(port=5000)

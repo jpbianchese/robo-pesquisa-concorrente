@@ -3,6 +3,7 @@ const baseUrl = 'http://127.0.0.1:5000';
 const fileInput = document.getElementById('fileInput');
 const btnIniciar = document.getElementById('btnIniciar');
 const btnDownload = document.getElementById('btnDownload');
+const downloadList = document.getElementById('downloadList');
 const fileNameLabel = document.getElementById('fileName');
 const dropArea = document.querySelector('.file-drop');
 
@@ -40,6 +41,23 @@ function resetProgressUI() {
     statusText.style.color = 'var(--accent)';
     progressPercent.innerText = '0%';
     progressBar.style.width = '0%';
+    if (downloadList) downloadList.innerHTML = '';
+}
+
+function showCompetitorDownloads(completedCompetitors) {
+    if (!downloadList) return;
+
+    completedCompetitors.forEach((competitor) => {
+        if (document.getElementById(`download-${competitor.chave}`)) return;
+
+        const link = document.createElement('a');
+        link.id = `download-${competitor.chave}`;
+        link.className = 'btn download-btn';
+        link.href = `${baseUrl}/download/${encodeURIComponent(competitor.chave)}`;
+        link.download = competitor.arquivo;
+        link.textContent = `BAIXAR RESULTADO - ${competitor.nome.toUpperCase()}`;
+        downloadList.appendChild(link);
+    });
 }
 
 async function upload() {
@@ -98,6 +116,7 @@ async function upload() {
                         progressPercent.innerText = percent + '%';
                         progressBar.style.width = percent + '%';
                         statusText.innerText = msg;
+                        showCompetitorDownloads(st.concorrentes_concluidos || []);
                     } 
                     else if (st.status === 'done') {
                         clearInterval(poll);
@@ -105,6 +124,7 @@ async function upload() {
                         progressBar.style.width = '100%';
                         statusText.innerText = 'Processamento concluído com sucesso!';
                         statusText.style.color = 'var(--success)';
+                        showCompetitorDownloads(st.concorrentes_concluidos || []);
                         finishSuccess(st.download_name || downloadName);
                     } 
                     else if (st.status === 'error') {
