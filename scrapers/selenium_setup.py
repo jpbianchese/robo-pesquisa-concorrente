@@ -8,6 +8,6 @@ def iniciar_driver():
     options.add_argument("--log-level=3")
 
     
-    driver = uc.Chrome(options=options, version_main=152)
+    driver = uc.Chrome(options=options, version_main=154)
     
     return driver
